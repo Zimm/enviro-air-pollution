@@ -90,7 +90,7 @@
             var asource = sources[i];
             // setTimeout(function() {
             get_latlng_addr(asource.address, true, function(res, tsource) {
-                var amarker = addMarker(res, tsource.company);
+                var amarker = addMarker(res, tsource.company, { path: google.maps.SymbolPath.CIRCLE, scale: 3, fillColor: "black", fillOpacity: 0.8, strokeWeight: 2, strokeColor: "red" } );
                 amarker.associatedSource = tsource;
                 google.maps.event.addListener(amarker, 'click', moveInfoWindow);
             }, asource);
@@ -104,11 +104,12 @@
         infowindow.open(map);
     }
 
-    function addMarker(location, titl) {
+    function addMarker(location, titl, ico) {
         marker = new google.maps.Marker({
             position: location,
             map: map,
-            title: titl
+            title: titl,
+            icon: ico
         });
         markersArray.push(marker);
         return marker;
