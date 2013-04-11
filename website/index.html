@@ -16,28 +16,31 @@
     var map;
     var default_latlng = new google.maps.LatLng(42.0018550, -87.65818399999999);
     var infowindow;
+    var lookedUpAddr = {};
 
-    function get_latlng_addr(address, async, callback) {
-        console.log("Looking for " + address);
+
+    function get_latlng_addr(address, async, callback, param) {
+        if (lookedUpAddr[address]) {
+            return lookedUpAddr[address];
+        }
         var xmlhttp = new XMLHttpRequest();
         if (async) {
             xmlhttp.onreadystatechange = function() {
-                if (xmlhttp.status == 200) {
+                if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                    // console.log("rec " + xmlhttp.responseText);
                     var responseobj = JSON.parse(xmlhttp.response);
-                    console.log("recieved " + responseobj);
                     if (responseobj["status"] === "OK") {
                         var result = responseobj["results"][0];
                         var retgeo = result["geometry"];
                         var retloc = retgeo["location"];
                         var lat = retloc["lat"];
                         var lng = retloc["lng"];
-                        console.log("Found " + lat + " , " + lng);
-                        callback(new google.maps.LatLng(parseFloat(lat), parseFloat(lng)));
+                        var result = new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
+                        lookedUpAddr[address] = result;
+                        callback(result, param);
                     } else {
-                        callback(null);
+                        callback(null, param);
                     }
-                } else {
-                    callback(null);
                 }
             };
         }
@@ -46,17 +49,18 @@
         if (!async) {
             if (xmlhttp.status == 200) {
                 var responseobj = JSON.parse(xmlhttp.response);
-                console.log("recieved " + responseobj);
                 if (responseobj["status"] === "OK") {
                     var result = responseobj["results"][0];
                     var retgeo = result["geometry"];
                     var retloc = retgeo["location"];
                     var lat = retloc["lat"];
                     var lng = retloc["lng"];
-                    console.log("Found " + lat + " , " + lng);
-                    return new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
+                    var result = new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
+                    lookedUpAddr[address] = result;
+                    return result;
                 }
             }
+            lookedUpAddr[address] = default_latlng;
             return default_latlng; //default
         }
     }
@@ -84,9 +88,11 @@
         for(i=0;i<sources.length;i++) {
             var asource = sources[i];
             // setTimeout(function() {
-            get_latlng_addr(asource.address, true, function(res) {
-                addMarker(res, asource.company);
-            });
+            get_latlng_addr(asource.address, true, function(res, tsource) {
+                var amarker = addMarker(res, tsource.company);
+                amarker.associatedSource = tsource;
+                google.maps.event.addListener(amarker, 'click', moveInfoWindow);
+            }, asource);
             // }, (i + 1)*200);
         }
     };
