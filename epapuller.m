@@ -11,10 +11,11 @@
 @property (nonatomic, retain) NSString *versionType;
 @property (nonatomic, retain) NSString *sourceCat;
 @property (nonatomic, retain) NSString *pdfLink;
+@property (nonatomic, retain) NSString *geocodedAddress;
 @end
 
 @implementation EmissionSource
-@synthesize address, company, emissionType, issueDate, expDate, versionType, sourceCat, pdfLink;
+@synthesize address, company, emissionType, issueDate, expDate, versionType, sourceCat, pdfLink, geocodedAddress;
 - (id)description {
     return [NSString stringWithFormat:@"<%p> [%@ address=%@ company=%@ emissionType=%@ issueDate=%@ expDate=%@ versionType=%@ sourceCat=%@ pdfLink=%@]", self, NSStringFromClass([self class]), self.address, self.company, self.emissionType, self.issueDate, self.expDate, self.versionType, self.sourceCat, self.pdfLink];
 }
@@ -101,6 +102,15 @@ NSString *escape(NSString *in) {
     return [in stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
 }
 
+NSString *URLescape(NSString *in) {
+    return (NSString *)CFURLCreateStringByAddingPercentEscapes(
+    NULL,
+   (CFStringRef)in,
+    NULL,
+    CFSTR("!*'();:@&=+$,/?%#[]"),
+    kCFStringEncodingUTF8);
+}
+
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *bigpool = [[NSAutoreleasePool alloc] init];
     NSError *err = NULL;
@@ -136,9 +146,18 @@ int main(int argc, char *argv[]) {
                             TFHppleElement *tmp = recursiveFindTag([columns objectAtIndex:1], @"font", @"b");
                             es.address = tmp.text;
                         } else if ([txt rangeOfString:@"city, state, zip:"].location != NSNotFound) {
+                            NSError *terr = NULL;
                             NSArray *bchilds = [[columns objectAtIndex:1] childrenWithTagName:@"b"];
                             NSString *adder = [NSString stringWithFormat:@" %@%@%@", [[[bchilds objectAtIndex:0] firstChildWithTagName:@"font"] text], [[[bchilds objectAtIndex:1] firstChildWithTagName:@"font"] text], [[[bchilds objectAtIndex:2] firstChildWithTagName:@"font"] text]];
                             es.address = [es.address?:@"" stringByAppendingString:adder];
+                            NSString *geodata = [[NSString alloc] initWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://www.datasciencetoolkit.org/maps/api/geocode/json?address=%@&sensor=false", URLescape(es.address)]] encoding:NSUTF8StringEncoding error:&terr];
+                            // NSLog(@"Got geodata: %@", geodata);
+                            if ([geodata rangeOfString:@"<h1>"].location == NSNotFound)
+                                es.geocodedAddress = geodata;
+                            else {
+                                es.geocodedAddress = "{}";
+                            }
+                            [geodata release];
                         } else if ([txt rangeOfString:@"source category:"].location != NSNotFound) {
                             TFHppleElement *tmp = [[[columns objectAtIndex:1] firstChildWithTagName:@"b"] firstChildWithTagName:@"font"];
                             es.sourceCat = tmp.text;
@@ -180,10 +199,10 @@ int main(int argc, char *argv[]) {
     NSLog(@"\t\tSaving data...");
     NSMutableString *result = [[NSMutableString alloc] initWithString:@""];
     [result appendString:
-        @"var EPASource = function(addr, comp, emt, idat, exdat, vtype, scat, plink) { this.address = addr; this.company = comp; this.emissionType = emt; this.issueDate = idat; this.expDate = exdat; this.versionType = vtype; this.sourceCat = scat; this.pdfLink = plink; };\nvar sources = [];\n"
+        @"var EPASource = function(addr, comp, emt, idat, exdat, vtype, scat, plink, gdata) { this.address = addr; this.company = comp; this.emissionType = emt; this.issueDate = idat; this.expDate = exdat; this.versionType = vtype; this.sourceCat = scat; this.pdfLink = plink; this.geocodedAddress = gdata; };\nvar sources = [];\n"
         ];
     for (EmissionSource *es in emissionSources) {
-        [result appendFormat:@"sources.push( new EPASource( '%@', '%@', '%@', '%@', '%@', '%@', '%@', '%@' ) );\n", escape(es.address), escape(es.company), escape(es.emissionType), escape(es.issueDate), escape(es.expDate), escape(es.versionType), escape(es.sourceCat), escape(es.pdfLink)];
+        [result appendFormat:@"sources.push( new EPASource( '%@', '%@', '%@', '%@', '%@', '%@', '%@', '%@', %@ ) );\n", escape(es.address), escape(es.company), escape(es.emissionType), escape(es.issueDate), escape(es.expDate), escape(es.versionType), escape(es.sourceCat), escape(es.pdfLink), escape(es.geocodedAddress)];
     }
     NSError *aerr = NULL;
     [result writeToFile:@"website/databank.js" atomically:YES encoding:NSUTF8StringEncoding error:&aerr];
