@@ -18,12 +18,33 @@
     var infowindow;
     var lookedUpAddr = {};
     var geocoder = new google.maps.Geocoder();
+    var currentCallbackParam = null;
 
+    function jsonpparse(responseobj) {
+        // var responseobj = JSON.parse(xmlhttp.response);
+        // console.log("I got " + responseobj);
+        if (responseobj["status"] === "OK") {
+            var result = responseobj["results"][0];
+            var retgeo = result["geometry"];
+            var retloc = retgeo["location"];
+            var lat = retloc["lat"];
+            var lng = retloc["lng"];
+            console.log("Found pos " + lat + " , " + lng);
+            var result = new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
+            lookedUpAddr[currentCallbackParam.address] = result;
+            currentCallbackParam.callback(result, currentCallbackParam.param);
+        } else {
+            // console.log("erm " + xmlhttp.responseText);
+            callback(null, param);
+        }
+    }
 
     function get_latlng_addr(addr, callback, param) {
         if (lookedUpAddr[addr]) {
             return lookedUpAddr[addr];
         }
+        var url = "http://www.datasciencetoolkit.org/maps/api/geocode/jsonp?address=" + encodeURIComponent(addr) + "&sensor=false&callback=jsonpparse";
+        currentCallbackParam = {"address" : addr , "callback" : callback, "param" : param};
         /*
         geocoder.geocode( { address : addr }, function(results, status) {
             if (status == google.maps.GeocoderStatus.OK) {
@@ -34,31 +55,22 @@
                 callback(null, param);
             }
         });
-        return;*/
+        return;
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onreadystatechange = function() {
             if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-                // console.log("rec " + xmlhttp.responseText);
-                var responseobj = JSON.parse(xmlhttp.response);
-                // console.log("I got " + responseobj);
-                if (responseobj["status"] === "OK") {
-                    var result = responseobj["results"][0];
-                    var retgeo = result["geometry"];
-                    var retloc = retgeo["location"];
-                    var lat = retloc["lat"];
-                    var lng = retloc["lng"];
-                    console.log("Found pos " + lat + " , " + lng);
-                    var result = new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
-                    lookedUpAddr[addr] = result;
-                    callback(result, param);
-                } else {
-                    // console.log("erm " + xmlhttp.responseText);
-                    callback(null, param);
-                }
+                
             }
         };
-        xmlhttp.open("GET", "http://www.datasciencetoolkit.org/maps/api/geocode/json?address=" + encodeURIComponent(addr) + "&sensor=false", false);
-        xmlhttp.send();
+        xmlhttp.open("GET", url, false);
+        xmlhttp.send();*/
+
+        var head = document.head;
+
+        var script = document.createElement("script");
+        script.setAttribute("src", url);
+        head.appendChild(script);
+        head.removeChild(script);
     }
 
     function initialize() {
