@@ -1,4 +1,4 @@
-<html>
+<!-- <html> -->
 <head>
     <title>Air Pollution around LUC</title>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
@@ -8,17 +8,35 @@
       #map-canvas { height: 100% }
     </style>
     <script type="text/javascript"
-      src="https://maps.googleapis.com/maps/api/js?sensor=false">
+      src="https://maps.googleapis.com/maps/api/js?libraries=weather&sensor=false">
     </script>
+    <script type="text/javascript" src="http://www.wxtiles.com/api/jsapi"></script>
+    <script src="http://openlayers.org/api/OpenLayers.js"></script>
+    <script src="http://openweathermap.org/js/OWM.OpenLayers.1.3.4.js" ></script>
     <script type="text/javascript" src="databank.js"></script>
     <script type="text/javascript">
     var markersArray = [];
+    var markers = new OpenLayers.Layer.Markers( "Markers" );
     var map;
+    var weatherLayer;
+    // var vectorsLayer;
+    var wxoverlay;
     var default_latlng = new google.maps.LatLng(42.0018550, -87.65818399999999);
     var infowindow;
     var lookedUpAddr = {};
     var geocoder = new google.maps.Geocoder();
     var currentCallbackParam = null;
+    var ArrowStyle = function(rota) {
+        return {
+            fillColor: "#000000",
+            strokeWidth: 0,
+            // pointerEvents: "visiblePainted",
+            title: "wind",
+            // externalGraphic: "arrow.png",
+            // graphicName: 'star',
+            // rotation: rota
+        };
+    };
 
     function jsonpparse(responseobj) {
         // var responseobj = JSON.parse(xmlhttp.response);
@@ -73,23 +91,63 @@
         head.removeChild(script);
     }
 
+    function openLayerLonLatFromGMap(i) {
+        return new OpenLayers.LonLat(i.lng(),i.lat()).transform(new OpenLayers.Projection("EPSG:4326"),new OpenLayers.Projection("EPSG:900913"));
+    }
+
     function initialize() {
         // version 1.1
-        var mapOptions = {
-            center: default_latlng,
-            zoom: 10,
-            mapTypeId: google.maps.MapTypeId.ROADMAP
-        };
-        map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+        centerr = new OpenLayers.LonLat(-87.65818399999999, 42.0018550).transform(new OpenLayers.Projection("EPSG:4326"),new OpenLayers.Projection("EPSG:900913"));
+        /*var mapOptions = {
+            projection: 'EPSG:4326',
+//            center: default_latlng,
+  //          zoom: 10,
+// mapTypeId: google.maps.MapTypeId.ROADMAP
+            layers: [
+                new OpenLayers.Layer.Google("Google Physical", {type: google.maps.MapTypeId.TERRAIN}),
+                new OpenLayers.Layer.Google("Google Streets", {numZoomLevels: 20}),
+                new OpenLayers.Layer.Google("Google Hybrid",{type: google.maps.MapTypeId.HYBRID, numZoomLevels: 20}),
+                new OpenLayers.Layer.Google("Google Satellite",{type: google.maps.MapTypeId.SATELLITE, numZoomLevels: 22})
+            ],
+            center: centerr,
+            zoom: 5
+        };*/
+        var layer_name = "wind";
+        map = new OpenLayers.Map('map-canvas');
+        map.addLayer(new OpenLayers.Layer.Google("Google Streets", {numZoomLevels: 20}));
+        var layer = new OpenLayers.Layer.XYZ(
+            "layer "+layer_name,
+            "http://${s}.tile.openweathermap.org/map/"+layer_name+"/${z}/${x}/${y}.png",
+            {
+                numZoomLevels: 20, 
+                isBaseLayer: false,
+                opacity: 0.6,
+                sphericalMercator: true
+            }
+        );
+        // vectorsLayer = new OpenLayers.Layer.Vector("winds");
+        map.addLayer(layer);
+        map.addLayer(markers);
+        // map.addLayer(vectorsLayer);
+        map.setCenter(centerr, 12);
+        // map.addControl(new OpenLayers.Control.LayerSwitcher());
+        /*weatherLayer = new google.maps.weather.WeatherLayer({
+            windSpeedUnits: google.maps.weather.WindSpeedUnit.MILES_PER_HOUR,
+            temperatureUnits: null
+        });
+        */
+        //wxoverlay = new WXTiles({"cview" : "wind"});
+        //wxoverlay.addToMap(map);
+        //wxoverlay.addColorBar("big","horiz");
         get_latlng_addr("Loyola University Chicago Lake Shore Campus, North Sheridan Road, Chicago, IL", 
             function(loyola_latlng, param) {
-                map.setCenter(loyola_latlng);
-                var amarker = addMarker(loyola_latlng, "Loyola University Chicago Lake Shore Campus");
-                infowindow = new google.maps.InfoWindow();
-                google.maps.event.addListener(amarker, 'click', moveInfoWindow);
-                infowindow.setContent(amarker.getTitle()); //need to add specific info about type of pollutant, also style this, eek
-                infowindow.setPosition(amarker.getPosition());
-                infowindow.open(map);
+                conv_loyola_latlng = openLayerLonLatFromGMap(loyola_latlng);
+                map.setCenter(conv_loyola_latlng);
+                var amarker = addMarker(conv_loyola_latlng, "Loyola University Chicago Lake Shore Campus");
+                // amarker.associatedSource = new EPASource("LUC Lake Shore", "Loyola University Chicago", "", "", "exdat", "vtype", "scat", "plink", "gdata");
+                // addInfoWindow.apply(amarker);
+                // infowindow.setContent(amarker.getTitle()); //need to add specific info about type of pollutant, also style this, eek
+                // infowindow.setPosition(amarker.getPosition());
             }, null);
     }
     google.maps.event.addDomListener(window, 'load', initialize);
@@ -107,32 +165,113 @@
                 var lat = retloc["lat"];
                 var lng = retloc["lng"];
                 // console.log("Found pos " + lat + " , " + lng);
-                setTimeout(function(lt, lg, asource) {
-                    var result = new google.maps.LatLng(parseFloat(lt), parseFloat(lg));
+                setTimeout(function(lt, lg, asource, ii) {
+                    var result = openLayerLonLatFromGMap(new google.maps.LatLng(parseFloat(lt), parseFloat(lg)));
                     var amarker = addMarker(result, asource.company, { path: google.maps.SymbolPath.CIRCLE, scale: 3, fillColor: "black", fillOpacity: 0.8, strokeWeight: 2, strokeColor: "red" } );
                     amarker.associatedSource = asource;
-                    google.maps.event.addListener(amarker, 'click', moveInfoWindow);
-                }, 2*i, lat, lng, as);
+                    // google.maps.event.addListener(amarker, 'click', moveInfoWindow);
+                }, 2*i, lat, lng, as, i);
             } else {
                 console.log("No geocoded data? " + as.company);
             }
         }
+        loadWind();
     };
 
     function moveInfoWindow(event) {
+        /*
         infowindow.setContent(this.getTitle()); //need to add specific info about type of pollutant, also style this, eek
         infowindow.setPosition(event.latLng);
         infowindow.open(map);
+        */
+    }
+
+    function addInfoWindow() {
+        console.log("blerp " + this.icon + " " + this.icon.size);
+        var popup = new OpenLayers.Popup.FramedCloud(this.associatedSource ? this.associatedSource.company : "LUC Lake Shore", this.lonlat, new OpenLayers.Size(320, 320), this.associatedSource ? "<h1>" + this.associatedSource.company + "</h1>" : "<h1>Loyola</h1>", this.icon, true);
+        map.addPopup(popup, true);
+        console.log("blerpeklrj " + popup);
+    }
+
+    function addWind(co, wi) {
+        var ll = new OpenLayers.LonLat(co.lon, co.lat).transform(new OpenLayers.Projection("EPSG:4326"),new OpenLayers.Projection("EPSG:900913"));
+        var size = new OpenLayers.Size(10,15);
+        var offset = new OpenLayers.Pixel(-(size.w/2), -size.h);
+        var icon = new OpenLayers.Icon('arrow.png', size, offset);
+        marker = new OpenLayers.Marker(ll, icon);
+        markers.addMarker(marker);
+        var elem = marker.draw();
+        var scaler;
+        if (wi.speed <= 1) {
+            scaler = wi.speed;
+        } else {
+            scaler = Math.log(wi.speed) + 1;
+        }
+        var transformation = 'rotate(' + wi.deg + 'deg) scale(' + scaler + ')';
+        elem.style.transform = transformation;
+        elem.style.webkitTransform = transformation;
+        elem.style.mozTransform = transformation;
+        elem.style.oTransform = transformation;
+        elem.style.msTransform = transformation;
+
+
+//"transform:  rotate(0deg) ;-webkit-transform:  rotate(0deg) ;-moz-transform: rotate(0deg) ;-o-transform:  rotate(0deg) ;-ms-transform:  rotate(0deg) ;"
+//transform:  scale(0.806, 1.073);-webkit-transform:  scale(0.806, 1.073);-moz-transform: scale(0.806, 1.073);-o-transform:  scale(0.806, 1.073);-ms-transform:  scale(0.806, 1.073);
+
+        // console.log("meg " + JSON.stringify(Object.keys(marker)));
+        /*
+        var feature = new OpenLayers.Feature.Vector(new OpenLayers.Geometry.Point(0,0),{},ArrowStyle(wi.deg));
+        console.log("Created feature: " + feature);
+        console.log("co: " + JSON.stringify(co));
+        feature.move(ll);
+        vectorsLayer.addFeatures([feature]);
+        */
+    }
+
+    function windStations(data) {
+        // console.log("Got wind stuff: " + JSON.stringify(data));
+        var station, i;
+        var windobj, coordobj;
+        var stations = data["list"];
+        for (i=0;i<data.cnt;i++) {
+            station = stations[i];
+            windobj = station.wind;
+            coordobj = station.coord;
+            addWind(coordobj, windobj);
+        }
+    }
+
+    function loadWind() {
+        var url = "http://api.openweathermap.org/data/2.1/find/station?lat=42.0018550&lon=-87.65818399999999&cnt=100&callback=windStations"
+        var script = document.createElement("script");
+        var head = document.head;
+        script.setAttribute("src", url);
+        head.appendChild(script);
+        head.removeChild(script);
+    }
+
+    function moused() {
+        console.log("Touched :" + this);
     }
 
     function addMarker(location, titl, ico) {
-        marker = new google.maps.Marker({
-            position: location,
-            map: map,
-            title: titl,
-            icon: ico
-        });
+        if (titl === "Loyola University Chicago Lake Shore Campus") {
+            var size = new OpenLayers.Size(21,25);
+            var offset = new OpenLayers.Pixel(-(size.w/2), -size.h);
+            var icon = new OpenLayers.Icon('http://www.openlayers.org/dev/img/marker.png', size, offset);
+            marker = new OpenLayers.Marker(location, icon);
+            markersArray.push(marker);
+            markers.addMarker(marker);
+            marker.events.register('click', marker, addInfoWindow);
+            return marker;
+        }
+        var size = new OpenLayers.Size(10,10);
+        var offset = new OpenLayers.Pixel(-(size.w/2), -size.h);
+        var icon = new OpenLayers.Icon('marker.png', size, offset);
+        marker = new OpenLayers.Marker(location, icon);
         markersArray.push(marker);
+        markers.addMarker(marker);
+        marker.events.register('click', marker, addInfoWindow);
         return marker;
     }
 
