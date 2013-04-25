@@ -2,10 +2,18 @@
 <head>
     <title>Air Pollution around LUC</title>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <link href='http://fonts.googleapis.com/css?family=Quicksand' rel='stylesheet' type='text/css'>
     <style type="text/css">
       html { height: 100% }
-      body { height: 100%; margin: 0; padding: 0 }
-      #map-canvas { height: 100% }
+      body { 
+        height: 100%; 
+        margin: 0; 
+        padding: 0;
+        font-family: Quicksand;
+      }
+      #map-canvas {
+        height: 100%;
+      }
       #legend {
         position: absolute;
         right:0px;
@@ -13,10 +21,21 @@
         height:10em;
         width:30em;
         background-color: white;
+        -webkit-border-radius: 10px 0px 0px 0px;
+        border-radius: 10px 0px 0px 0px;
       }
       #legendcontainer {
         padding:2em;
-        padding-top:1em;
+        padding-top:.5em;
+      }
+      .olPopup {
+        -webkit-border-radius: 10px;
+        border-radius: 10px;
+        -webkit-box-shadow:  0px 2px 5px .5px rgba(0, 0, 0, .5);
+        box-shadow:  0px 2px 5px .5px rgba(0, 0, 0, .5);
+      }
+      #popup {
+        padding:.5em;
       }
     </style>
     <script type="text/javascript"
@@ -200,9 +219,8 @@
 
     function addInfoWindow() {
         console.log("blerp " + this.icon + " " + this.icon.size);
-        var popup = new OpenLayers.Popup.FramedCloud(this.associatedSource ? this.associatedSource.company : "LUC Lake Shore", this.lonlat, new OpenLayers.Size(320, 320), this.associatedSource ? "<h1>" + this.associatedSource.company + "</h1>" : "<h1>Loyola</h1>", this.icon, true);
+        var popup = new OpenLayers.Popup.Anchored(this.associatedSource ? this.associatedSource.company : "LUC Lake Shore", this.lonlat, new OpenLayers.Size(300, 100), "<div id=\"popup\"><div>Company: " + (this.associatedSource ? this.associatedSource.company : "Loyola") + "<br/>Pollution Source Category:<br/>&nbsp;&nbsp;&nbsp;&nbsp;" + (this.associatedSource ? this.associatedSource.sourceCat : "Intelligence") + "</div></div>", this.icon, false);
         map.addPopup(popup, true);
-        console.log("blerpeklrj " + popup);
     }
 
     function addWind(co, wi) {
