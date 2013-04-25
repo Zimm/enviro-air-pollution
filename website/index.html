@@ -6,6 +6,18 @@
       html { height: 100% }
       body { height: 100%; margin: 0; padding: 0 }
       #map-canvas { height: 100% }
+      #legend {
+        position: absolute;
+        right:0px;
+        bottom:0px;
+        height:10em;
+        width:30em;
+        background-color: white;
+      }
+      #legendcontainer {
+        padding:2em;
+        padding-top:1em;
+      }
     </style>
     <script type="text/javascript"
       src="https://maps.googleapis.com/maps/api/js?libraries=weather&sensor=false">
@@ -115,7 +127,7 @@
         var layer_name = "wind";
         map = new OpenLayers.Map('map-canvas');
         map.addLayer(new OpenLayers.Layer.Google("Google Streets", {numZoomLevels: 20}));
-        var layer = new OpenLayers.Layer.XYZ(
+        /*var layer = new OpenLayers.Layer.XYZ(
             "layer "+layer_name,
             "http://${s}.tile.openweathermap.org/map/"+layer_name+"/${z}/${x}/${y}.png",
             {
@@ -124,9 +136,9 @@
                 opacity: 0.6,
                 sphericalMercator: true
             }
-        );
+        );*/
         // vectorsLayer = new OpenLayers.Layer.Vector("winds");
-        map.addLayer(layer);
+        //map.addLayer(layer);
         map.addLayer(markers);
         // map.addLayer(vectorsLayer);
         map.setCenter(centerr, 12);
@@ -304,6 +316,22 @@
     </script>
 </head>
 <body>
-    <div id="map-canvas"/>
+    <div id="map-canvas">
+    </div>
+    <div id="legend">
+        <div id="legendcontainer">
+            <h2><u>Legend</u></h2>
+            <table>
+                <tr>
+                    <td>Pollution Sources:</td>
+                    <td><img src="marker.png" width="15" height="15"/></td>
+                </tr>
+                <tr>
+                    <td>Wind Directions:</td>
+                    <td><img src="arrow.png" width="10" height="15"/></td>
+                </tr>
+            </table>
+        </div>
+    </div>
 </body>
 </html>
