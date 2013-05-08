@@ -1,6 +1,8 @@
 #import <Foundation/Foundation.h>
 #import "TFHpple.h"
 
+// EmissionSource 
+
 @interface EmissionSource : NSObject {
 }
 @property (nonatomic, retain) NSString *address;

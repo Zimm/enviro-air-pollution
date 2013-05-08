@@ -4,6 +4,7 @@
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
     <link href='http://fonts.googleapis.com/css?family=Quicksand' rel='stylesheet' type='text/css'>
     <style type="text/css">
+    /* stylesheets for the website... */
       html { height: 100% }
       body { 
         height: 100%; 
@@ -46,6 +47,7 @@
     <script src="http://openweathermap.org/js/OWM.OpenLayers.1.3.4.js" ></script>
     <script type="text/javascript" src="databank.js"></script>
     <script type="text/javascript">
+    // first i load in google maps' javascript API, then wxtiles', then openlayers and finally my databank file
     var markersArray = [];
     var markers = new OpenLayers.Layer.Markers( "Markers" );
     var map;
@@ -57,6 +59,7 @@
     var lookedUpAddr = {};
     var geocoder = new google.maps.Geocoder();
     var currentCallbackParam = null;
+    // legacy code, unused atm
     var ArrowStyle = function(rota) {
         return {
             fillColor: "#000000",
@@ -68,7 +71,7 @@
             // rotation: rota
         };
     };
-
+    // used as a callback to add a location to the map
     function jsonpparse(responseobj) {
         // var responseobj = JSON.parse(xmlhttp.response);
         // console.log("I got " + responseobj);
@@ -88,6 +91,7 @@
         }
     }
 
+    // this kickstarts getting the geocoded coordinates
     function get_latlng_addr(addr, callback, param) {
         if (lookedUpAddr[addr]) {
             return lookedUpAddr[addr];
@@ -122,10 +126,11 @@
         head.removeChild(script);
     }
 
+    // Converts google maps' api for long lat to openlayers' api (convenience function)
     function openLayerLonLatFromGMap(i) {
         return new OpenLayers.LonLat(i.lng(),i.lat()).transform(new OpenLayers.Projection("EPSG:4326"),new OpenLayers.Projection("EPSG:900913"));
     }
-
+    // first called once the web page has loaded - adds the map with its proper layers - lots of legacy code in here
     function initialize() {
         // version 1.1
         centerr = new OpenLayers.LonLat(-87.65818399999999, 42.0018550).transform(new OpenLayers.Projection("EPSG:4326"),new OpenLayers.Projection("EPSG:900913"));
@@ -183,6 +188,7 @@
     }
     google.maps.event.addDomListener(window, 'load', initialize);
 
+    // when the window is loaded we loop through each of the pollutant sources (the sources array as provided by databank.js) and add each of them to the map
     window.onload = function() {
         var i;
         var locs = [];
@@ -196,6 +202,7 @@
                 var lat = retloc["lat"];
                 var lng = retloc["lng"];
                 // console.log("Found pos " + lat + " , " + lng);
+                // we use setTimeout in order to keep the website somewhat smooth so everything isnt being loaded at once
                 setTimeout(function(lt, lg, asource, ii) {
                     var result = openLayerLonLatFromGMap(new google.maps.LatLng(parseFloat(lt), parseFloat(lg)));
                     var amarker = addMarker(result, asource.company, { path: google.maps.SymbolPath.CIRCLE, scale: 3, fillColor: "black", fillOpacity: 0.8, strokeWeight: 2, strokeColor: "red" } );
@@ -217,11 +224,14 @@
         */
     }
 
+    // adds a popup window next to a dot that you have clicked on
     function addInfoWindow() {
         console.log("blerp " + this.icon + " " + this.icon.size);
         var popup = new OpenLayers.Popup.Anchored(this.associatedSource ? this.associatedSource.company : "LUC Lake Shore", this.lonlat, new OpenLayers.Size(300, 100), "<div id=\"popup\"><div>Company: " + (this.associatedSource ? this.associatedSource.company : "Loyola") + "<br/>Pollution Source Category:<br/>&nbsp;&nbsp;&nbsp;&nbsp;" + (this.associatedSource ? this.associatedSource.sourceCat : "Intelligence") + "</div></div>", this.icon, false);
         map.addPopup(popup, true);
     }
+
+// this function adds a wind element to the map - its scaled based on its magnitude
 
     function addWind(co, wi) {
         var ll = new OpenLayers.LonLat(co.lon, co.lat).transform(new OpenLayers.Projection("EPSG:4326"),new OpenLayers.Projection("EPSG:900913"));
@@ -258,6 +268,8 @@
         */
     }
 
+// parses through wind data
+
     function windStations(data) {
         // console.log("Got wind stuff: " + JSON.stringify(data));
         var station, i;
@@ -271,6 +283,8 @@
         }
     }
 
+// loads the wind data, with 'windStations' as the jsonp callback
+
     function loadWind() {
         var url = "http://api.openweathermap.org/data/2.1/find/station?lat=42.0018550&lon=-87.65818399999999&cnt=100&callback=windStations"
         var script = document.createElement("script");
@@ -280,9 +294,13 @@
         head.removeChild(script);
     }
 
+    // legacy code
+
     function moused() {
         console.log("Touched :" + this);
     }
+
+    // adds a marker to the map (convenience function, used in above functions)
 
     function addMarker(location, titl, ico) {
         if (titl === "Loyola University Chicago Lake Shore Campus") {
@@ -304,6 +322,8 @@
         marker.events.register('click', marker, addInfoWindow);
         return marker;
     }
+
+// last three functions are convenience functions and legacy code
 
     function clearOverlays() {
         if (markersArray) {
